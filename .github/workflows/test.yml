@@ -47,25 +47,37 @@ jobs:
           pip install -r requirements.txt
           playwright install  # if you use Playwright for e2e tests
       
-      - name: Run tests with merged coverage
+      - name: Run unit tests
         env:
           DATABASE_URL: postgresql://user:password@localhost:5432/mytestdb
         run: |
           source venv/bin/activate
-          
-          # 1) Unit tests
           pytest tests/unit/ --cov=app --cov-report=xml --cov-append
 
-          # Run migrations befroe DB-dependent tests
+      - name: Apply migrations 
+        env:
+          DATABASE_URL: postgresql://user:password@localhost:5432/mytestdb
+        run: |
+          source venv/bin/activate
           alembic upgrade head
-          
-          # 2) Integration tests
+
+      - name: Run integration tests
+        env:
+          DATABASE_URL: postgresql://user:password@localhost:5432/mytestdb
+        run: |
+          source venv/bin/activate
           pytest tests/integration/ --cov=app --cov-report=xml --cov-append
-          
-          # 3) E2E or other tests
+
+      - name: Run E2E tests
+        env:
+          DATABASE_URL: postgresql://user:password@localhost:5432/mytestdb
+        run: |
+          source venv/bin/activate
           pytest tests/e2e/ --cov=app --cov-report=xml --cov-append
 
-          # Merge coverage files and generate reports
+      - name: Merge coverage reports
+        run: |
+          source venv/bin/activate
           coverage combine
           coverage report
           coverage html
