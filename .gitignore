@@ -8,3 +8,5 @@ htmlcov
 .env
 traceback.txt
 untitled.txt
+.env.test
+.env.development

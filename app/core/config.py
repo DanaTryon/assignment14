@@ -1,10 +1,11 @@
-# app/config.py
 from functools import lru_cache
 from pydantic_settings import BaseSettings
 from typing import Optional, List
+import os
+import sys
 
 class Settings(BaseSettings):
-    # Database settings (keeping your existing default)
+    # Database settings (default if no env file is loaded)
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/fastapi_db"
     
     # JWT Settings
@@ -22,13 +23,16 @@ class Settings(BaseSettings):
     REDIS_URL: Optional[str] = "redis://localhost:6379/0"
     
     class Config:
-        env_file = ".env"
+        # Decide which env file to load
+        if "pytest" in sys.modules or os.getenv("ENV") == "test":
+            env_file = ".env.test"
+        else:
+            env_file = ".env.development"
         case_sensitive = True
 
 # Create a global settings instance
 settings = Settings()
 
-# Optional: Add cached settings getter
 @lru_cache()
 def get_settings() -> Settings:
     return Settings()
