@@ -12,6 +12,7 @@ Functions:
 - subtract(a: Union[int, float], b: Union[int, float]) -> Union[int, float]: Returns the difference when b is subtracted from a.
 - multiply(a: Union[int, float], b: Union[int, float]) -> Union[int, float]: Returns the product of a and b.
 - divide(a: Union[int, float], b: Union[int, float]) -> float: Returns the quotient when a is divided by b. Raises ValueError if b is zero.
+- lcm(a: int, b: int) -> int: Returns the least common multiple of two positive integers a and b.
 
 Usage:
 These functions can be imported and used in other modules or integrated into APIs
@@ -19,6 +20,7 @@ to perform arithmetic operations based on user input.
 """
 
 from typing import Union  # Import Union for type hinting multiple possible types
+import math  # Import math module for least common multiple operation
 
 # Define a type alias for numbers that can be either int or float
 Number = Union[int, float]
@@ -118,3 +120,35 @@ def divide(a: Number, b: Number) -> float:
     # Perform division of a by b and return the result as a float
     result = a / b
     return result
+
+def lcm(a: int, b: int) -> int:
+    """
+    Calculate the least common multiple (LCM) of two integers and return the result.
+    Parameters:
+    - a (int): The first integer.
+    - b (int): The second integer.
+    Returns:
+    - int: The least common multiple of a and b.
+    Raises:
+    - ValueError: If either a or b is not a positive integer.
+    Example:
+    >>> lcm(4, 5)
+    20
+    >>> lcm(6, 8)
+    24
+    >>> lcm(-4, 5.5)
+    Traceback (most recent call last):
+        ... 
+    ValueError: LCM is only defined for positive integers
+    """
+    # reject non-integers
+    if not float(a).is_integer() or not float(b).is_integer():
+        raise ValueError("LCM is only defined for positive integers")
+    
+    a = int(a)
+    b = int(b)
+
+    # reject non-positive integers
+    if a <= 0 or b <= 0:
+        raise ValueError("LCM is only defined for positive integers")
+    return abs(a * b) // math.gcd(a, b)

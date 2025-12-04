@@ -36,6 +36,7 @@ class CalculationType(str, Enum):
     SUBTRACTION = "subtraction"
     MULTIPLICATION = "multiplication"
     DIVISION = "division"
+    LCM = "lcm"
 
 class CalculationBase(BaseModel):
     """
@@ -49,7 +50,7 @@ class CalculationBase(BaseModel):
     """
     type: CalculationType = Field(
         ...,  # The ... means this field is required
-        description="Type of calculation (addition, subtraction, multiplication, division)",
+        description="Type of calculation (addition, subtraction, multiplication, division, lcm)",
         example="addition"
     )
     inputs: List[float] = Field(
@@ -130,6 +131,13 @@ class CalculationBase(BaseModel):
             # Prevent division by zero (skip the first value as numerator)
             if any(x == 0 for x in self.inputs[1:]):
                 raise ValueError("Cannot divide by zero")
+        if self.type == CalculationType.LCM:
+            # Ensure all imputs are positive integers for LCM
+            for x in self.inputs:
+                if not float(x).is_integer() or x <= 0:
+                    raise ValueError("LCM requires positive integers only")
+            # Cast to int for consistency
+            self.inputs = [int(x) for x in self.inputs]
         return self
 
     model_config = ConfigDict(

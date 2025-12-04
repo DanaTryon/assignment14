@@ -2,7 +2,7 @@
 
 import pytest  # Import the pytest framework for writing and running tests
 from typing import Union  # Import Union for type hinting multiple possible types
-from app.operations import add, subtract, multiply, divide  # Import the calculator functions from the operations module
+from app.operations import add, subtract, multiply, divide, lcm  # Import the calculator functions from the operations module
 
 # Define a type alias for numbers that can be either int or float
 Number = Union[int, float]
@@ -232,3 +232,54 @@ def test_divide_by_zero() -> None:
     # Assert that the exception message contains the expected error message
     assert "Cannot divide by zero!" in str(excinfo.value), \
         f"Expected error message 'Cannot divide by zero!', but got '{excinfo.value}'"
+
+# ---------------------------------------------
+# Unit Tests for the 'lcm' Function
+# ---------------------------------------------
+
+@pytest.mark.parametrize(
+    "a, b, expected",
+    [
+        (4, 6, 12),           # Basic case
+        (5, 7, 35),           # Two primes
+        (3, 9, 9),            # One multiple of the other
+        (12, 12, 12),         # Same numbers
+        (1, 10, 10),          # One is 1
+        (100, 80, 400),       # Larger numbers
+        (6.0, 8.0, 24),       # Float inputs that are integers
+    ],
+    ids=[
+        "lcm_basic",
+        "lcm_primes",
+        "lcm_multiple",
+        "lcm_same",
+        "lcm_with_one",
+        "lcm_large",
+        "lcm_float_cast",
+    ]
+)
+def test_lcm_valid_cases(a: int, b: int, expected: int) -> None:
+    """
+    Test the 'lcm' function with valid positive integers.
+    Ensures correct results and that float inputs representing integers are cast properly.
+    """
+    result = lcm(a, b)
+    assert result == expected, f"Expected lcm({a}, {b}) to be {expected}, but got {result}"
+
+
+def test_lcm_invalid_zero() -> None:
+    """LCM should raise ValueError if either input is zero."""
+    with pytest.raises(ValueError, match="LCM is only defined for positive integers"):
+        lcm(0, 5)
+
+
+def test_lcm_invalid_negative() -> None:
+    """LCM should raise ValueError if either input is negative."""
+    with pytest.raises(ValueError, match="LCM is only defined for positive integers"):
+        lcm(-4, 6)
+
+
+def test_lcm_invalid_non_integer_float() -> None:
+    """LCM should raise ValueError if inputs are non-integer floats."""
+    with pytest.raises(ValueError, match="LCM is only defined for positive integers"):
+        lcm(4.5, 6)
