@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import uuid
 from uuid import uuid4
 import pytest
 import requests
@@ -318,3 +319,105 @@ def test_model_division():
     with pytest.raises(ValueError):
         calc_zero = Calculation.create("division", dummy_user_id, [100, 0])
         calc_zero.get_result()
+
+############################################################################
+# LCM Model Test
+############################################################################
+@pytest.mark.slow
+def test_lcm_calculation_e2e(page, fastapi_server):
+    # Navigate to the app
+    page.goto(fastapi_server)
+
+    # Register a new user
+    username = f"user_{uuid.uuid4().hex[:8]}"
+    password = "TestPassword123!"
+
+    # Register
+    page.get_by_role("link", name="Register").click()
+    page.get_by_label("Username").fill(username)
+    page.get_by_label("Email").fill(f"{username}@example.com")
+    page.get_by_label("First Name").fill("Test")
+    page.get_by_label("Last Name").fill("User")
+    page.get_by_label("Password", exact=True).fill(password)
+    page.get_by_label("Confirm Password", exact=True).fill(password)
+    page.get_by_role("button", name="Create Account", exact=True).click()
+
+    # Wait for success alert
+    page.wait_for_selector("#successAlert:not(.hidden)", timeout=5000)
+
+    # Wait for redirect
+    page.wait_for_url("**/login", timeout=5000)
+
+    # Login
+    page.get_by_label("Username").fill(username)
+    page.get_by_label("Password", exact=True).fill(password)
+    page.get_by_role("button", name="Sign in", exact=True).click()
+
+    # Wait for dashboard
+    page.wait_for_url("**/dashboard", timeout=5000)
+
+    # Select LCM
+    page.get_by_label("Operation Type").select_option("lcm")
+
+    # Fill inputs
+    page.get_by_label("Numbers (comma-separated)").fill("4, 6")
+
+    # Submit
+    page.get_by_role("button", name="Calculate").click()
+
+    # Verify result appears
+    page.wait_for_selector("text=Calculation complete: 12")
+    assert page.locator("text=Calculation complete: 12").is_visible()
+
+    # Verify calculation appears in history table
+    page.wait_for_selector("table")
+    assert page.locator("table").locator("text=Lcm").first.is_visible()
+    assert page.locator("table").locator("text=4, 6").first.is_visible()
+    assert page.locator("table").locator("text=12").first.is_visible()
+
+
+@pytest.mark.slow
+def test_lcm_invalid_inputs_e2e(page, fastapi_server):
+    # Navigate to the app
+    page.goto(fastapi_server)
+
+    # Register a new user
+    username = f"user_{uuid.uuid4().hex[:8]}"
+    password = "TestPassword123!"
+
+    # Register
+    page.get_by_role("link", name="Register").click()
+    page.get_by_label("Username").fill(username)
+    page.get_by_label("Email").fill(f"{username}@example.com")
+    page.get_by_label("First Name").fill("Test")
+    page.get_by_label("Last Name").fill("User")
+    page.get_by_label("Password", exact=True).fill(password)
+    page.get_by_label("Confirm Password", exact=True).fill(password)
+    page.get_by_role("button", name="Create Account", exact=True).click()
+
+    # Wait for success alert
+    page.wait_for_selector("#successAlert:not(.hidden)", timeout=5000)
+
+    # Wait for redirect
+    page.wait_for_url("**/login", timeout=5000)
+
+    # Login
+    page.get_by_label("Username").fill(username)
+    page.get_by_label("Password", exact=True).fill(password)
+    page.get_by_role("button", name="Sign in", exact=True).click()
+
+    # Wait for dashboard
+    page.wait_for_url("**/dashboard", timeout=5000)
+
+    # Select LCM
+    page.get_by_label("Operation Type").select_option("lcm")
+
+    # Fill inputs
+    page.get_by_label("Numbers (comma-separated)").fill("5")
+
+    # Submit
+    page.get_by_role("button", name="Calculate").click()
+
+    # Expect a validation error message
+    page.wait_for_selector("text=Please enter at least two valid numbers, separated by commas")
+    assert page.locator("text=Please enter at least two valid numbers, separated by commas").is_visible()
