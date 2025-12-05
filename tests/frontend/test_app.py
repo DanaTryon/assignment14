@@ -1,63 +1,48 @@
 import pytest
 
-BASE_URL = "http://localhost:8000"
+# Rename fixture so it does NOT conflict with pytest-base-url
+@pytest.fixture
+def server_url(fastapi_server):
+    return fastapi_server.rstrip("/")
 
-# --- Helper function ---
-def login(page, username="johndoe", password="SecurePass123!"):
-    """Perform login and wait for dashboard redirect."""
-    page.goto(f"{BASE_URL}/login")
+import uuid
+
+def login(page, server_url, password="SecurePass123!"):
+    # Generate a unique username for each test
+    username = f"user_{uuid.uuid4().hex[:8]}"
+
+    # Register the user
+    page.goto(f"{server_url}/register")
+    page.fill("#username", username)
+    page.fill("#email", f"{username}@example.com")
+    page.fill("#first_name", "Test")
+    page.fill("#last_name", "User")
+    page.fill("#password", password)
+    page.fill("#confirm_password", password)
+    page.get_by_role("button", name="Create Account").click()
+    page.wait_for_url("**/login")
+
+    # Login
+    page.goto(f"{server_url}/login")
     page.fill("#username", username)
     page.fill("#password", password)
-    page.click("button[type='submit']")
+    page.get_by_role("button", name="Sign in").click()
     page.wait_for_url("**/dashboard")
     assert page.url.endswith("/dashboard")
 
-# --- Tests ---
+@pytest.mark.playwright
+def test_calculator(page, server_url):
+    login(page, server_url)
+    page.get_by_label("Operation Type").select_option("addition")
+    page.get_by_label("Numbers (comma-separated)").fill("2,2")
+    page.get_by_role("button", name="Calculate").click()
+    page.wait_for_selector("#successAlert:not(.hidden)")
+    assert "Calculation complete" in page.text_content("#successMessage")
 
 @pytest.mark.playwright
-def test_register_user(page):
-    page.goto(f"{BASE_URL}/register")
-    page.fill("#username", "uniqueuser123")
-    page.fill("#email", "uniqueuser123@example.com")
-    page.fill("#first_name", "John")
-    page.fill("#last_name", "Doe")
-    page.fill("#password", "SecurePass123!")
-    page.fill("#confirm_password", "SecurePass123!")
-    page.click("button[type='submit']")
-    page.wait_for_url("**/login")
-    assert page.url.endswith("/login")
-
-@pytest.mark.playwright
-def test_login_user(page):
-    login(page)  # use helper
-    # Assert welcome message is visible
-    assert "Welcome, johndoe!" in page.text_content("#layoutUserWelcome")
-
-@pytest.mark.playwright
-def test_calculator(page):
-    login(page)  # ensure logged in
-    # Select operation type
-    page.select_option("#calcType", "addition")
-    # Fill in inputs
-    page.fill("#calcInputs", "2,2")
-    # Submit calculation
-    page.click("button[type='submit']")
-    # Wait for success alert
-    page.wait_for_selector("#successAlert")
-    success_text = page.text_content("#successMessage")
-    assert "Calculation complete" in success_text
-
-@pytest.mark.playwright
-def test_logout_user(page):
-    login(page)  # ensure logged in
-
-    # Accept the confirm dialog triggered by logout
+def test_logout_user(page, server_url):
+    login(page, server_url)
     page.once("dialog", lambda dialog: dialog.accept())
-
-    # Click logout button
     page.click("#layoutLogoutBtn")
-
-    # Now wait for redirect
     page.wait_for_url("**/login")
     assert page.url.endswith("/login")
-

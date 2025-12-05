@@ -12,7 +12,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:14   # Pin version to match local setup
+        image: postgres:14
         env:
           POSTGRES_USER: user
           POSTGRES_PASSWORD: password
@@ -30,7 +30,7 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.12'   # MATCHES your working local environment
 
       - uses: actions/cache@v3
         with:
@@ -45,9 +45,10 @@ jobs:
           source venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
-          playwright install  # if you use Playwright
+          playwright install
 
-      - name: Run unit tests
+      # RUN ASYNC UNIT TESTS FIRST (JWT + Redis)
+      - name: Run async unit tests first
         env:
           DB_USER: user
           DB_PASS: password
@@ -57,9 +58,9 @@ jobs:
         run: |
           source venv/bin/activate
           export DATABASE_URL="postgresql://$DB_USER:$DB_PASS@$DB_HOST:$DB_PORT/$DB_NAME"
-          pytest tests/unit/ --cov=app --cov-report=xml --cov-append
+          pytest tests/unit/test_jwt.py tests/unit/test_redis.py -vv --cov=app --cov-append
 
-      # Drop and recreate DB before migrations (clean slate)
+      # Reset DB before integration tests
       - name: Reset database
         env:
           DB_USER: user
@@ -82,7 +83,6 @@ jobs:
         run: |
           source venv/bin/activate
           export DATABASE_URL="postgresql://$DB_USER:$DB_PASS@$DB_HOST:$DB_PORT/$DB_NAME"
-          echo "Using DATABASE_URL=$DATABASE_URL"
           alembic upgrade head
 
       - name: Debug DB schema
@@ -96,6 +96,19 @@ jobs:
           export PGPASSWORD=$DB_PASS
           psql -h $DB_HOST -U $DB_USER -d $DB_NAME -c '\dt'
 
+      # Run the rest of the unit tests (excluding async ones)
+      - name: Run remaining unit tests
+        env:
+          DB_USER: user
+          DB_PASS: password
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: mytestdb
+        run: |
+          source venv/bin/activate
+          export DATABASE_URL="postgresql://$DB_USER:$DB_PASS@$DB_HOST@$DB_PORT/$DB_NAME"
+          pytest tests/unit/ --ignore=tests/unit/test_jwt.py --ignore=tests/unit/test_redis.py --cov=app --cov-append
+
       - name: Run integration tests
         env:
           DB_USER: user
@@ -105,8 +118,8 @@ jobs:
           DB_NAME: mytestdb
         run: |
           source venv/bin/activate
-          export DATABASE_URL="postgresql://$DB_USER:$DB_PASS@$DB_HOST:$DB_PORT/$DB_NAME"
-          pytest tests/integration/ --cov=app --cov-report=xml --cov-append
+          export DATABASE_URL="postgresql://$DB_USER:$DB_PASS@$DB_HOST@$DB_PORT/$DB_NAME"
+          pytest tests/integration/ --cov=app --cov-append
 
       - name: Run E2E tests
         env:
@@ -117,8 +130,8 @@ jobs:
           DB_NAME: mytestdb
         run: |
           source venv/bin/activate
-          export DATABASE_URL="postgresql://$DB_USER:$DB_PASS@$DB_HOST:$DB_PORT/$DB_NAME"
-          pytest tests/e2e/ --cov=app --cov-report=xml --cov-append
+          export DATABASE_URL="postgresql://$DB_USER:$DB_PASS@$DB_HOST@$DB_PORT/$DB_NAME"
+          pytest tests/e2e/ --cov=app --cov-append
 
       - name: Merge coverage reports
         run: |
@@ -171,8 +184,8 @@ jobs:
         with:
           push: true
           tags: |
-            danatryon/assignment14:latest
-            danatryon/assignment14:${{ github.sha }}
+            danatryon/IS601_Final_Project:latest
+            danatryon/IS601_Final_Project:${{ github.sha }}
           platforms: linux/amd64,linux/arm64
-          cache-from: type=registry,ref=danatryon/assignment13:cache
+          cache-from: type=registry,ref=danatryon/assignment14:cache
           cache-to: type=inline,mode=max

@@ -27,9 +27,16 @@ def test_create_token_success():
     assert isinstance(token, str)
 
 def test_create_token_failure(monkeypatch):
-    monkeypatch.setattr(jwt_utils.jwt, "encode", lambda *a, **k: (_ for _ in ()).throw(Exception("boom")))
+    # Force jwt.encode to raise an exception
+    def fake_encode(*args, **kwargs):
+        raise Exception("boom")
+
+    monkeypatch.setattr(jwt_utils.jwt, "encode", fake_encode)
+
+    # Expect create_token to catch the exception and raise HTTPException
     with pytest.raises(HTTPException) as exc_info:
         jwt_utils.create_token("user123", TokenType.ACCESS)
+
     assert exc_info.value.status_code == 500
     assert "Could not create token" in exc_info.value.detail
 
